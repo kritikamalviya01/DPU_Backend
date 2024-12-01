@@ -1,0 +1,24 @@
+<html>
+   <body>
+      <form action = "http://localhost:8080//recorded_video/<filename>" method = "POST" 
+         enctype = "multipart/form-data">
+         <input type = "file" name = "video" />
+         <input type = "submit"/>
+      </form>
+      <form action="http://localhost:8080/recorded_video" method="GET">
+         <input type = "submit" /> Returns Record Video
+      </form>
+      <form action="http://localhost:8080/speech_to_text" method="GET">
+         <input type = "submit" />
+      </form>
+      <form action="http://localhost:8080/get_facial_emotions" method="GET">
+         <input type = "submit" />
+      </form>
+      <form action="http://localhost:8080/compare" method="GET">
+         <input type = "submit" />
+      </form>
+      <form action="http://localhost:8080/get_speech_emotion" method="GET">
+         <input type = "submit" />
+      </form>
+   </body>
+</html>
