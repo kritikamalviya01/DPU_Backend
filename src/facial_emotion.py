@@ -68,7 +68,6 @@ def facial_emotion(filename):
                 (x, y, w, h) = face_utils.rect_to_bb(rect)
                 face = gray[y:y + h, x:x + w]
 
-            try:
                 shape = predictor_landmarks(gray, rect)
                 shape = face_utils.shape_to_np(shape)
 

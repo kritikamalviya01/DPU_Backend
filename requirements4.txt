@@ -1,0 +1,19 @@
+# python==3.8.10
+tensorflow
+flask
+pandas
+torch
+moviepy
+transformers
+opencv-python
+scipy
+imutils
+dlib
+pyaudio
+librosa
+sentence_transformers==
+accelerate
+flask-cors
+pymongo
+boto3
+python-dotenv
