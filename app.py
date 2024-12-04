@@ -14,6 +14,8 @@ from utils.database.candidates import *
 from utils.extract_audio import extract_audio
 from utils.s3_storage import upload_to_s3, download_file_from_s3
 
+os.environ['FLASK_ENV'] = 'development'
+
 app = Flask(__name__)
 CORS(app)
 
@@ -339,8 +341,13 @@ def get_interview(id):
     
     return { "message" : "successfully fetched interview details!", "data" : interview_details}, 200
 
+@app.route('/testroute', methods=['GET'])
+def testPing():
+     return { "message" : "successfully fetched interview details new!"}, 200
+
+
 if __name__ == "__main__":
-    app.run(port=8080, debug=True)
+    app.run(debug=True)
 
 
 

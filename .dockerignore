@@ -1,0 +1,9 @@
+.git
+
+__pycache__
+recorded_audio
+recorded_video
+templates
+tmp 
+
+./utils/__pycache__

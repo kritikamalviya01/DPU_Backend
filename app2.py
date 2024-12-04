@@ -339,5 +339,10 @@ def get_interview(id):
     
     return { "message" : "successfully fetched interview details!", "data" : interview_details}, 200
 
+@app.route('/testroute', methods=['GET'])
+def testPing():
+     return { "message" : "successfully fetched interview details!"}, 200
+
+
 if __name__ == "__main__":
     app.run(port=8080, debug=True)

@@ -4,9 +4,30 @@ services:
     build: .
     volumes:
       - .:/app  # Mount the current directory (project) to the /app directory in the container
+      - app-data:/app/data  # Mount the current directory (project) to the /app directory in the container
     ports:
       - "8080:8080"  # Expose port 8080 on the container to port 8080 on the host
     environment:
       FLASK_APP: app.py
       FLASK_ENV: development  # Set Flask to development mode for debugging
-    command: flask run --host=0.0.0.0 --port=8080
+    command: flask run --host=0.0.0.0 --port=8080 --debugger --reload
+    develop:
+      watch:
+        - action: sync  # Sync changes to the container
+          path: ./app  # Monitor the app directory
+          target: /app  # Sync changes inside the container
+          ignore:
+            - __pycache__/  # Ignore compiled Python files
+            - recorded_audio/  # Ignore specific directories
+            - recorded_video/
+            - tmp/
+        - action: rebuild  # Rebuild if requirements.txt or other config files change
+          path: requirements.txt
+
+volumes:
+  dpu-backend:  # Optional volume for persistent data like databases (not used in this example)
+    external: true
+  app-data:  # Persistent volume for application data (logs, uploaded files, etc.)
+    driver: local
+
+
