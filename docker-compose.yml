@@ -1,33 +1,33 @@
-version: '3'
+
 services:
   ai-interview:
     build: .
     volumes:
-      - .:/app  # Mount the current directory (project) to the /app directory in the container
-      - app-data:/app/data  # Mount the current directory (project) to the /app directory in the container
+      - .:/app  
+      - app-data:/app/data  
     ports:
-      - "8080:8080"  # Expose port 8080 on the container to port 8080 on the host
+      - "8080:8080"  
     environment:
       FLASK_APP: app.py
-      FLASK_ENV: development  # Set Flask to development mode for debugging
+      FLASK_ENV: development  
     command: flask run --host=0.0.0.0 --port=8080 --debugger --reload
     develop:
       watch:
-        - action: sync  # Sync changes to the container
-          path: ./app  # Monitor the app directory
-          target: /app  # Sync changes inside the container
+        - action: sync 
+          path: ./app 
+          target: /app 
           ignore:
-            - __pycache__/  # Ignore compiled Python files
-            - recorded_audio/  # Ignore specific directories
+            - __pycache__/  
+            - recorded_audio/  
             - recorded_video/
             - tmp/
-        - action: rebuild  # Rebuild if requirements.txt or other config files change
+        - action: rebuild  
           path: requirements.txt
 
 volumes:
-  dpu-backend:  # Optional volume for persistent data like databases (not used in this example)
+  dpu-backend: 
     external: true
-  app-data:  # Persistent volume for application data (logs, uploaded files, etc.)
+  app-data:  
     driver: local
 
 

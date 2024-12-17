@@ -20,3 +20,4 @@ utils/database/__pycache__
 #/recorded_video/*
 /__pycache__
 /static
+predictions.csv

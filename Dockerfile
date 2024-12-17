@@ -1,8 +1,7 @@
-# Step 1: Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Step 2: Install system dependencies (CMake, build tools, libraries for OpenCV and TensorFlow)
-RUN apt-get update && apt-get install -y \
+# Install only essential dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     build-essential \
     portaudio19-dev \
@@ -12,42 +11,37 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Step 3: Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Step 4: Copy only the requirements file first (to take advantage of Docker layer caching)
+# Copy requirements file and install dependencies
 COPY requirements.txt /app/
+RUN python -m venv /env && \
+    /env/bin/pip install --no-cache-dir -r requirements.txt
 
-# Step 5: Create and activate a virtual environment
-RUN python -m venv /env
-
-# Step 6: Install the required Python packages from requirements.txt
-RUN /env/bin/pip install --no-cache-dir -r requirements.txt
-
-# Step 7: Copy the rest of the project files into the container
+# Copy application code
 COPY . /app
 
-# Step 8: Set environment variables
+# Set environment variables
 ENV PATH="/env/bin:$PATH"
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=development
 
-# Step 9: Expose the port Flask will run on
+# Expose the Flask port
 EXPOSE 8080
 
-# Step 10: Run the Flask app when the container launches
+# Start Flask application
 CMD ["flask", "run", "--host=0.0.0.0", "--port=8080"]
 
 
 
 
 
-# # Step 1: Use an official Python runtime as a parent image
 # FROM python:3.11-slim
 
-# # Step 2: Install system dependencies (CMake, build tools, libraries for OpenCV and TensorFlow)
 # RUN apt-get update && apt-get install -y \
 #     cmake \
 #     build-essential \
@@ -58,25 +52,26 @@ CMD ["flask", "run", "--host=0.0.0.0", "--port=8080"]
 #     libsm6 \
 #     libxext6 \
 #     libxrender1 \
+#     ffmpeg \
 #     && rm -rf /var/lib/apt/lists/*
 
-# # Step 3: Set the working directory in the container
 # WORKDIR /app
 
-# # Step 4: Copy the current directory contents into the container
+# COPY requirements.txt /app/
+
+# RUN python -m venv /env
+
+# RUN /env/bin/pip install --no-cache-dir -r requirements.txt
+
+
 # COPY . /app
 
-# # Step 5: Install the required Python packages from requirements.txt
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Step 6: Expose the port Flask will run on
-# EXPOSE 8080
-
-# # Step 7: Define the environment variable for Flask
+# ENV PATH="/env/bin:$PATH"
 # ENV FLASK_APP=app.py
-
-# # Step 8: Set the Flask environment to development for debugging
 # ENV FLASK_ENV=development
 
-# # Step 9: Run the Flask app when the container launches
+# EXPOSE 8080
+
 # CMD ["flask", "run", "--host=0.0.0.0", "--port=8080"]
+
+
