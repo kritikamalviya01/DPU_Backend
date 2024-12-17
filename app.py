@@ -27,6 +27,7 @@ mongo_db_name = os.getenv("MONGO_DB_NAME")
 client = MongoClient(mongo_uri)
 db = client[mongo_db_name]
 interviews_collection = db["interviews"]
+questions_collection = db['questions']
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -39,7 +40,10 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 if not os.path.exists(AUDIO_FOLDER):
     os.makedirs(AUDIO_FOLDER)
-
+    
+def get_question_details(questionId):
+    """Fetch question details by questionId."""
+    return questions_collection.find_one({'_id': ObjectId(questionId)})
 
 def download_video(video_url, save_path):
     """Download the video from a URL and save it to the specified path."""
@@ -93,9 +97,9 @@ def process_video(file_path, interviewId, questionId):
         print("Audio file path:", audio_file_path)
 
         # Start analysis in separate threads
-        threading.Thread(target=facial_emotions_analysis, args=(file_path, interviewId, questionId)).start()
-        threading.Thread(target=analyze_speech_emotion, args=(audio_file_path, interviewId, questionId)).start()
-        # Thread(target=analyze_speech_to_text, args=(audio_file_path, interviewId)).start()
+        # threading.Thread(target=facial_emotions_analysis, args=(file_path, interviewId, questionId)).start()
+        # threading.Thread(target=analyze_speech_emotion, args=(audio_file_path, interviewId, questionId)).start()
+        threading.Thread(target=analyze_speech_to_text, args=(audio_file_path, interviewId, questionId)).start()
 
         print(f"Processing started for Interview ID: {interviewId}, Question ID: {questionId}")
 
@@ -142,29 +146,142 @@ def facial_emotions_analysis(file_path, interviewId, questionId):
         else:
             logging.warning("File not found: %s", file_path)
             
-def analyze_speech_emotion(audio_file, objectId):
+def analyze_speech_emotion(audio_file_path, interviewId, questionId):
     """Background task for analyzing speech emotions."""
-    print("""Background task for analyzing speech emotions.""")
-    update_stage(objectId, "speechEmotions", "started")  # Set stage to started
+    print("Starting background task for analyzing speech emotions.")
+    
+    # Set the initial stage to 'started'
+    update_stage(interviewId, questionId, "speechEmotions", "started")
+    
     try:
-        model = os.path.join('Models', 'audio.hdf5')
-        SER = speechEmotionRecognition(model)
-        emotions, _ = SER.predict_emotion_from_file(audio_file)
+        # Load the speech emotion recognition model
+        model_path = os.path.join('Models', 'audio.hdf5')
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found at {model_path}")
 
-        major_emotion = max(set(emotions), key=emotions.count)
-        emotion_dist = [int(100 * emotions.count(emotion) / len(emotions)) for emotion in SER._emotion.values()]
+        # Initialize the speech emotion recognition model
+        SER = speechEmotionRecognition(model_path)
         
+        # Perform speech emotion analysis on the provided audio file
+        emotions, _ = SER.predict_emotion_from_file(audio_file_path)
+
+        if not emotions:
+            raise ValueError("No emotions detected in the audio file.")
+
+        # Calculate the major emotion and distribution
+        major_emotion = max(set(emotions), key=emotions.count)
+        emotion_dist = {
+            emotion: int(100 * emotions.count(emotion) / len(emotions)) for emotion in set(emotions)
+        }
+
+        # Prepare the data to be sent in the update
         data = {
             'emotions': emotions,
             'major_emotion': major_emotion,
             'emotion_dist': emotion_dist
         }
-        print("success speech emotion")
-        update_stage(objectId, "speechEmotions", "success", data)  # Set stage to success
+
+        print(f"Speech emotion analysis successful: {data}")
+        update_stage(interviewId, questionId, "speechEmotions", "success", data)
+
+    except FileNotFoundError as fnf_error:
+        error_message = f"File not found: {str(fnf_error)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "speechEmotions", "failed")
+
+    except ValueError as val_error:
+        error_message = f"Value error: {str(val_error)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "speechEmotions", "failed")
 
     except Exception as e:
-        update_stage(objectId, "speechEmotions", "failed")  # Set stage to failed
-        print(f"Error analyzing speech emotions: {str(e)}")
+        error_message = f"Unexpected error analyzing speech emotions: {str(e)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "speechEmotions", "failed")
+        
+def analyze_speech_to_text(audio_file_path, interviewId, questionId):
+    """Convert speech to text and analyze the comparison."""
+    print("Starting speech-to-text conversion.")
+
+    # Set the initial stage to 'started'
+    update_stage(interviewId, questionId, "transcript", "started")
+
+    try:
+        # Perform speech-to-text conversion
+        text, error = speech_to_text(audio_file_path)
+
+        if error:
+            raise Exception(error)
+
+        if not text or len(text.strip()) == 0:
+            raise ValueError("Transcription resulted in empty text.")
+
+        # Log and update the successful transcript result
+        print(f"Transcription successful. Transcribed text: {text}")
+        update_stage(interviewId, questionId, "transcript", "success", text)
+
+        # Fetch question details from the database
+        print("Fetching question details from the database.")
+        question_details = get_question_details(questionId)
+
+        if not question_details:
+            raise ValueError(f"No question found for questionId: {questionId}")
+
+        # Extract the correct answer from question details
+        correct_answer = question_details.get('answer')
+
+        if not correct_answer:
+            raise ValueError(f"No answer found in question details for questionId: {questionId}")
+
+        # Start the comparison analysis in a separate thread
+        print("Starting comparison analysis in a separate thread.")
+        threading.Thread(
+            target=perform_comparison_analysis,
+            args=(interviewId, questionId, text, correct_answer)
+        ).start()
+
+    except FileNotFoundError as fnf_error:
+        error_message = f"Audio file not found: {str(fnf_error)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "transcript", "failed")
+        update_stage(interviewId, questionId, "comparisonScore", "failed")
+
+    except ValueError as val_error:
+        error_message = f"Value error: {str(val_error)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "transcript", "failed")
+        update_stage(interviewId, questionId, "comparisonScore", "failed")
+
+    except Exception as e:
+        error_message = f"Error during speech-to-text conversion: {str(e)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "transcript", "failed")
+        update_stage(interviewId, questionId, "comparisonScore", "failed")
+
+def perform_comparison_analysis(interviewId, questionId, transcript, correct_answer):
+    """Perform comparison analysis and update the comparison score."""
+    try:
+        update_stage(interviewId, questionId, "comparisonScore", "started")
+
+        # Calculate the comparison score
+        comparison_score = compare(transcript, correct_answer)
+        
+        comparison_score = float(comparison_score)
+
+        print(f"Comparison successful. Score: {comparison_score}%")
+        update_stage(
+            interviewId,
+            questionId,
+            "comparisonScore",
+            "success",
+            comparison_score
+        )
+
+    except Exception as e:
+        error_message = f"Error during comparison analysis: {str(e)}"
+        print(error_message)
+        update_stage(interviewId, questionId, "comparisonScore", "failed")
+
 
 
 @app.route("/api/python/process-video", methods=["POST"])
