@@ -97,8 +97,8 @@ def process_video(file_path, interviewId, questionId):
         print("Audio file path:", audio_file_path)
 
         # Start analysis in separate threads
-        # threading.Thread(target=facial_emotions_analysis, args=(file_path, interviewId, questionId)).start()
-        # threading.Thread(target=analyze_speech_emotion, args=(audio_file_path, interviewId, questionId)).start()
+        threading.Thread(target=facial_emotions_analysis, args=(file_path, interviewId, questionId)).start()
+        threading.Thread(target=analyze_speech_emotion, args=(audio_file_path, interviewId, questionId)).start()
         threading.Thread(target=analyze_speech_to_text, args=(audio_file_path, interviewId, questionId)).start()
 
         print(f"Processing started for Interview ID: {interviewId}, Question ID: {questionId}")
