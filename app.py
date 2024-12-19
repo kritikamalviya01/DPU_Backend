@@ -20,7 +20,8 @@ from utils.extract_audio import extract_audio
 # from utils.s3_storage import upload_to_s3, download_file_from_s3
 
 load_dotenv()
-os.environ['FLASK_ENV'] = 'development'
+flask_env = os.getenv('FLASK_ENV', 'development')  # Default to 'development' if not set
+os.environ['FLASK_ENV'] = flask_env
 mongo_uri = os.getenv("MONGO_URI")
 mongo_db_name = os.getenv("MONGO_DB_NAME")
 
@@ -169,10 +170,8 @@ def analyze_speech_emotion(audio_file_path, interviewId, questionId):
             raise ValueError("No emotions detected in the audio file.")
 
         # Calculate the major emotion and distribution
-        major_emotion = max(set(emotions), key=emotions.count)
-        emotion_dist = {
-            emotion: int(100 * emotions.count(emotion) / len(emotions)) for emotion in set(emotions)
-        }
+        major_emotion = max(set(emotions), key=emotions.count)    
+        emotion_dist = [int(100 * emotions.count(emotion) / len(emotions)) for emotion in SER._emotion.values()]
 
         # Prepare the data to be sent in the update
         data = {
@@ -313,6 +312,15 @@ def process_video_api():
 
     except Exception as e:
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+
+@app.route('/testroute', methods=['GET'])
+def testPing():
+     return { "message" : "successfully fetched interview details new!"}, 200
+
+
+if __name__ == "__main__":
+    app.run(port=8080,debug=(flask_env == 'development'))
 
 
 
@@ -600,14 +608,6 @@ def process_video_api():
 #         return jsonify({"error": error_message}), status_code
     
 #     return { "message" : "successfully fetched interview details!", "data" : interview_details}, 200
-
-@app.route('/testroute', methods=['GET'])
-def testPing():
-     return { "message" : "successfully fetched interview details new!"}, 200
-
-
-if __name__ == "__main__":
-    app.run(port=8080,debug=True)
 
 
 

@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  ai-interview:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Use the production Dockerfile
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: production
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+    ports:
+      - "8080:8080"
+    command: gunicorn -b 0.0.0.0:8080 app:app
+    networks:
+      - ai_network
+    restart: always
+
+networks:
+  ai_network:
+    driver: bridge

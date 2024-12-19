@@ -1,9 +1,19 @@
-.git
-
+# Ignore Python bytecode files
 __pycache__
-recorded_audio
-recorded_video
-templates
-tmp 
+*.pyc
 
-./utils/__pycache__
+# Ignore log files and temp directories
+logs/
+tmp/
+*.log
+
+# Ignore virtual environments
+.venv/
+
+# Ignore IDE-related files (e.g., VSCode settings)
+.vscode/
+
+# Ignore other files you don't need in the Docker container
+recorded_video/
+recorded_audio/
+static/

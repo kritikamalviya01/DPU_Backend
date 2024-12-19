@@ -1,7 +1,7 @@
 # Use Python 3.11-slim image
 FROM python:3.11-slim
 
-# Install production dependencies
+# Install dependencies needed for development
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     build-essential \
@@ -18,19 +18,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install
+# Copy requirements file for installation
 COPY requirements.txt /app/
+
+# Install dependencies (development dependencies can be added here)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
+# Install flask and other dev dependencies for live-reloading
+RUN pip install flask-cors gunicorn
+
+# Copy the app code to the container
 COPY . /app
 
 # Expose the Flask app on port 8080
 EXPOSE 8080
 
-# Set environment variables for production
-ENV FLASK_ENV=production
+# Set environment variables for Flask
+ENV FLASK_ENV=development
 ENV FLASK_APP=app.py
 
-# Use Gunicorn for production
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
+# Run Flask with auto-reloading in development
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8080"]
