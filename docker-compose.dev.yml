@@ -2,6 +2,7 @@
 services:
   ai-interview:
     build: .
+    container_name: ai-interview-dev
     volumes:
       - .:/app  
       - app-data:/app/data  

@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import logging
+import gc   
 
 
 from src.speech_to_text import speech_to_text
@@ -46,6 +47,17 @@ def get_question_details(questionId):
     """Fetch question details by questionId."""
     return questions_collection.find_one({'_id': ObjectId(questionId)})
 
+def get_response_details(interviewId, responseId):
+    # Retrieve the interview document
+    interview = interviews_collection.find_one({ '_id': ObjectId(interviewId) })
+    
+    if not interview:
+        return None  # Return None if the interview is not found
+    
+    # Find the response within the 'responses' array by its '_id'
+    response = next((resp for resp in interview['responses'] if str(resp['_id']) == str(responseId)), None)
+    
+    return response
 def download_video(video_url, save_path):
     """Download the video from a URL and save it to the specified path."""
     try:
@@ -313,11 +325,70 @@ def process_video_api():
     except Exception as e:
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
+@app.route('/api/python/retry-analysis',methods=["POST"])
+def retryAnalysis():
+    try:
+        data = request.json;
+        resType = data.get("type")
+        responseId = data.get("responseId")
+        interviewId = data.get("interviewId")
+        
+        if not resType or not responseId or not interviewId:
+            return jsonify({"error": "Missing required parameters"}), 400
+        
+        interviewResponse = get_response_details(interviewId, responseId)
+        questionId = interviewResponse["questionId"]
+        
+        video_filename = f"{interviewId + responseId}.mp4"
+        save_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        # Download the video
+        download_result = download_video(interviewResponse["recordingUrl"], save_path)
+        
+        if "error" in download_result:
+            return jsonify({"error": download_result["error"]}), 400
+        
+        audio_file = extract_audio(save_path)
+        if isinstance(audio_file, dict) and "error" in audio_file:
+            print("Error in audio extraction:", audio_file["error"])
+            raise Exception(audio_file["error"])
+
+        if not os.path.exists(audio_file):
+            raise FileNotFoundError(f"Audio file not found: {audio_file}")
+        
+        if resType == 'transcript':
+            threading.Thread(target=analyze_speech_to_text, args=(audio_file, interviewId, questionId)).start()
+            
+        if resType == 'comparisionScore':
+            question_details = get_question_details(questionId)
+
+            if not question_details:
+                raise ValueError(f"No question found for questionId: {questionId}")
+
+            # Extract the correct answer from question details
+            correct_answer = question_details.get('answer')
+
+            if not correct_answer:
+                raise ValueError(f"No answer found in question details for questionId: {questionId}")
+            
+            threading.Thread(target=perform_comparison_analysis, args=(interviewId, questionId, interviewResponse['transcript']['data'], correct_answer)).start()
+        
+        
+        return jsonify({"message" : "Processing Started"}), 200
+        
+        
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @app.route('/testroute', methods=['GET'])
 def testPing():
      return { "message" : "successfully fetched interview details new!"}, 200
 
+@app.after_request
+def cleanup(response):
+    """Clean up memory after each request to avoid memory leaks."""
+    gc.collect()  # Force garbage collection
+    return response
 
 if __name__ == "__main__":
     app.run(port=8080,debug=(flask_env == 'development'))

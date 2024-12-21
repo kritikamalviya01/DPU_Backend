@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile  # Use the production Dockerfile
+    container_name: ai-interview-prod
     environment:
       FLASK_APP: app.py
       FLASK_ENV: production
